@@ -727,6 +727,13 @@ class StreamDecryptor(_EncryptionStream):  # pylint: disable=too-many-instance-a
         """Prepares necessary initial values."""
         self.last_sequence_number = 0
         self.__unframed_bytes_read = 0
+        self.read_to_sequence_number = -1
+        
+    def set_initial_sequence_number(self, initial_sequence_number):
+        self.last_sequence_number = initial_sequence_number
+    
+    def set_read_to_sequence_number(self, read_to_sequence_number):
+        self.read_to_sequence_number = read_to_sequence_number
 
     def _prep_message(self):
         """Performs initial message setup."""
@@ -868,7 +875,7 @@ class StreamDecryptor(_EncryptionStream):  # pylint: disable=too-many-instance-a
         _LOGGER.debug("collecting %d bytes", b)
         while len(plaintext) < b and not final_frame:
             _LOGGER.debug("Reading frame")
-            frame_data, final_frame = deserialize_frame(
+            frame_data, footer_frame = deserialize_frame(
                 stream=self.source_stream, header=self._header, verifier=self.verifier
             )
             _LOGGER.debug("Read complete for frame %d", frame_data.sequence_number)
@@ -892,7 +899,16 @@ class StreamDecryptor(_EncryptionStream):  # pylint: disable=too-many-instance-a
             )
             plaintext_length = len(plaintext)
             _LOGGER.debug("bytes collected: %d", plaintext_length)
-        if final_frame:
+            
+            if self.last_sequence_number == self.read_to_sequence_number or footer_frame:
+                _LOGGER.debug("Found all requested frames")
+                self.footer = True
+                final_frame = True
+            
+            if final_frame or footer_frame:
+                final_frame = True
+                
+        if footer_frame:
             _LOGGER.debug("Reading footer")
             self.footer = deserialize_footer(stream=self.source_stream, verifier=self.verifier)
 

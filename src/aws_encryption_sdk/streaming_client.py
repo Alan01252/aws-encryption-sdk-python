@@ -910,7 +910,7 @@ class StreamDecryptor(_EncryptionStream):  # pylint: disable=too-many-instance-a
                 
         if footer_frame:
             _LOGGER.debug("Reading footer")
-            self.footer = deserialize_footer(stream=self.source_stream, verifier=self.verifier)
+            self.footer = deserialize_footer(stream=self.source_stream, verifier=None)
 
         return plaintext
 
